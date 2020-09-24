@@ -102,17 +102,24 @@ uint64_t SecondsSinceEpoch()
 
 std::string TimestampToString(time_t time)
 {
-  if (time == INVALID_TIME_STAMP)
+  tm * t;
+  if (time == INVALID_TIME_STAMP || (t = gmtime(&time)) == nullptr)
     return std::string("INVALID_TIME_STAMP");
 
-  tm * t = gmtime(&time);
-  char buf[21] = { 0 };
+  char buf[22];
 #ifdef OMIM_OS_WINDOWS
+  // guarantees that the buffer will be null-terminated unless the buffer size is zero
   sprintf_s(buf, ARRAY_SIZE(buf), "%04d-%02d-%02dT%02d:%02d:%02dZ", t->tm_year + 1900,
             t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec);
 #else
-  ::snprintf(buf, ARRAY_SIZE(buf), "%04d-%02d-%02dT%02d:%02d:%02dZ", t->tm_year + 1900,
-             t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec);
+  const int n =
+      ::snprintf(buf, ARRAY_SIZE(buf) - 1, "%04d-%02d-%02dT%02d:%02d:%02dZ", t->tm_year + 1900,
+                 t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec);
+  if (n < 0)
+    // something really wrong, bad format string?
+    buf[0] = '\0';
+  else
+    buf[ARRAY_SIZE(buf) - 1] = '\0';
 #endif
 
   return buf;
